@@ -8,6 +8,7 @@ JQ="/system/sdcard/bin/jq"
 . /system/sdcard/config/telegram.conf
 [ -z $apiToken ] && echo "api token not configured yet" && exit 1
 [ -z $userChatId ] && echo "chat id not configured yet" && exit 1
+echo 0 > $lastSentUpdate 
 
 sendShot() {
   /system/sdcard/bin/getimage > "/tmp/telegram_image.jpg" &&\
@@ -21,12 +22,12 @@ sendMem() {
 
 detectionOn() {
   . /system/sdcard/scripts/common_functions.sh
-  motion_detection on && $TELEGRAM m "Motion detection started"
+  rewrite_config /system/sdcard/config/motion.conf send_telegram "true" && $TELEGRAM m "Motion detection started"
 }
 
 detectionOff() {
   . /system/sdcard/scripts/common_functions.sh
-  motion_detection off && $TELEGRAM m "Motion detection stopped"
+  rewrite_config /system/sdcard/config/motion.conf send_telegram "false" && $TELEGRAM m "Motion detection stopped"
 }
 
 textAlerts() {
@@ -41,6 +42,16 @@ imageAlerts() {
   $TELEGRAM m "Image alerts on motion detection"
 }
 
+setInterval() {
+  . /system/sdcard/scripts/common_functions.sh
+  if [ "$1" -ge 0 ] ; then
+    rewrite_config /system/sdcard/config/telegram.conf telegramInterval $1
+    $TELEGRAM m "Interval set to $1 seconds" 
+  else 
+    $TELEGRAM m "Invalid input: $1" 
+  fi
+}
+
 respond() {
   case $1 in
     /mem) sendMem;;
@@ -49,7 +60,8 @@ respond() {
     /off) detectionOff;;
     /textalerts) textAlerts;;
     /imagealerts) imageAlerts;;
-    /help) $TELEGRAM m "######### Bot commands #########\n# /mem - show memory information\n# /shot - take a shot\n# /on - motion detect on\n# /off - motion detect off\n# /textalerts - Text alerts on motion detection\n# /imagealerts - Image alerts on motion detection";;
+    /interval) setInterval $2;;
+    /help) $TELEGRAM m "######### Bot commands #########\n# /mem - show memory information\n# /shot - take a shot\n# /on - motion detect on\n# /off - motion detect off\n# /textalerts - Text alerts on motion detection\n# /imagealerts - Image alerts on motion detection\n# /interval N - Set time frame to send alerts";;
     *) $TELEGRAM m "I can't respond to '$1' command"
   esac
 }

@@ -182,14 +182,21 @@ fi
 if [ "$send_telegram" = true ]; then
 	(
 	include /system/sdcard/config/telegram.conf
-
-	if [ "$telegram_alert_type" = "text" ] ; then
+	
+	dateOld=$(cat "$lastSentUpdate")
+	dateNow=`date '+%s'`
+	dateDiff=$((dateNow-dateOld))
+	
+	if [ "$telegram_alert_type" = "text" ] && [ "$dateDiff" -gt "$telegramInterval" ] ; then
+		echo $dateNow > $lastSentUpdate
 		debug_msg "Send telegram text"
 		/system/sdcard/bin/telegram m "Motion detected"
-	elif [ "$telegram_alert_type" = "image" ] ; then
+	elif [ "$telegram_alert_type" = "image" ] && [ "$dateDiff" -gt "$telegramInterval" ] ; then
+		echo $dateNow > $lastSentUpdate
 		debug_msg "Send telegram image"
 		/system/sdcard/bin/telegram p "$snapshot_tempfile"
-	elif [ "$telegram_alert_type" = "video" ] ; then
+	elif [ "$telegram_alert_type" = "video" ] && [ "$dateDiff" -gt "$telegramInterval" ] ; then
+		echo $dateNow > $lastSentUpdate
 		debug_msg "Send telegram video"
 		/system/sdcard/bin/telegram v "$video_tempfile"
 	fi
