@@ -1,2 +1,3 @@
 # by default root:ismart12
+# to change password 'md5 root:all:$newpassword'
 root:all:a6564902a687c445cbd80bab194c42d5

@@ -4,6 +4,7 @@ CURL="/system/sdcard/bin/curl"
 LASTUPDATEFILE="/tmp/last_update_id"
 TELEGRAM="/system/sdcard/bin/telegram"
 JQ="/system/sdcard/bin/jq"
+CUSTOMSCRIPT="/system/sdcard/scripts/telegramCustomScript.sh"
 
 . /system/sdcard/config/telegram.conf
 [ -z $apiToken ] && echo "api token not configured yet" && exit 1
@@ -52,6 +53,10 @@ setInterval() {
   fi
 }
 
+customScript() {
+  $CUSTOMSCRIPT $1 & $TELEGRAM m "Started custom script" 
+}
+
 respond() {
   case $1 in
     /mem) sendMem;;
@@ -61,7 +66,8 @@ respond() {
     /textalerts) textAlerts;;
     /imagealerts) imageAlerts;;
     /interval) setInterval $2;;
-    /help) $TELEGRAM m "######### Bot commands #########\n# /mem - show memory information\n# /shot - take a shot\n# /on - motion detect on\n# /off - motion detect off\n# /textalerts - Text alerts on motion detection\n# /imagealerts - Image alerts on motion detection\n# /interval N - Set time frame to send alerts";;
+    /script) customScript $2;;
+    /help) $TELEGRAM m "######### Bot commands #########\n# /mem - show memory information\n# /shot - take a shot\n# /on - motion detect on\n# /off - motion detect off\n# /textalerts - Text alerts on motion detection\n# /imagealerts - Image alerts on motion detection\n# /interval N - Set time frame to send alerts\n# /script - Execute custom script";;
     *) $TELEGRAM m "I can't respond to '$1' command"
   esac
 }
