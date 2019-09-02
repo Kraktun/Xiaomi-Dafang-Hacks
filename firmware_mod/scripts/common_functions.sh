@@ -221,7 +221,6 @@ update_motor_pos(){
   sleep ${SLEEP_NUM//-/}
   # Display AXIS to OSD
   update_axis
-  /system/sdcard/bin/setconf -k o -v "$OSD"
 }
 
 # Read the light sensor
@@ -297,6 +296,66 @@ rtsp_mjpeg_server(){
     ;;
   status)
     if /system/sdcard/controlscripts/rtsp-mjpeg status | grep -q "PID"
+    then
+        echo "ON"
+    else
+        echo "OFF"
+    fi
+    ;;
+  esac
+}
+
+# Control the video recorder
+recording(){
+  case "$1" in
+  on)
+    /system/sdcard/controlscripts/recording start
+    ;;
+  off)
+    /system/sdcard/controlscripts/recording stop
+    ;;
+  status)
+    if /system/sdcard/controlscripts/recording status | grep -q "PID"
+    then
+        echo "ON"
+    else
+        echo "OFF"
+    fi
+    ;;
+  esac
+}
+
+# Control the ftp server
+ftp_server(){
+  case "$1" in
+  on)
+    /system/sdcard/controlscripts/ftp_server start
+    ;;
+  off)
+    /system/sdcard/controlscripts/ftp_server stop
+    ;;
+  status)
+    if /system/sdcard/controlscripts/ftp_server status | grep -q "PID"
+    then
+        echo "ON"
+    else
+        echo "OFF"
+    fi
+    ;;
+  esac
+}
+
+# Control the timelapse
+timelapse(){
+  case "$1" in
+  on)
+    /system/sdcard/controlscripts/timelapse start
+    ;;
+  off)
+    /system/sdcard/controlscripts/timelapse stop
+    ;;
+  status)
+    if /system/sdcard/controlscripts/timelapse status | grep -q "PID"
     then
         echo "ON"
     else
@@ -450,9 +509,14 @@ snapshot(){
 # Update axis
 update_axis(){
   . /system/sdcard/config/osd.conf > /dev/null 2>/dev/null
-  AXIS=$(/system/sdcard/bin/motor -d s | sed '3d' | awk '{printf ("%s ",$0)}' | awk '{print "X="$2,"Y="$4}')
-  if [ "$DISPLAY_AXIS" == "true" ]; then
-    OSD="${OSD} ${AXIS}"
+  AXIS=$(/system/sdcard/bin/motor -d s | sed '3d' | awk '{printf ("%s ",$0)}' | awk '{print " X="$2,"Y="$4}')
+  
+  if [ "$ENABLE_OSD" = "true" ]; then
+    if [ "$DISPLAY_AXIS" = "true" ]; then
+      OSD="${OSD}${AXIS}"
+    fi
+    
+    /system/sdcard/bin/setconf -k o -v "$OSD"
   fi
 }
 

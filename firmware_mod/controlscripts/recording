@@ -1,6 +1,14 @@
 #!/bin/sh
 PIDFILE="/run/recording.pid"
 DCIM_PATH="/system/sdcard/DCIM"
+if [ -f /system/sdcard/config/rtspserver.conf ]; then
+  . /system/sdcard/config/rtspserver.conf
+fi
+
+## UserName and password
+if [ "$USERNAME" != "" ]; then
+    CREDENTIALS="$USERNAME:$USERPASSWORD@"
+fi
 
 if [ ! -d "$DCIM_PATH" ]; then
   mkdir -p $DCIM_PATH
@@ -17,16 +25,21 @@ status()
 start()
 {
   if [ -f $PIDFILE ]; then
-    echo "Recording already running";
+    echo "Recording already running.";
   else
-    echo "Start recording"
+    echo "Started recording."
     SUB_DIR="$(date +%m%dFANG)"
     if [ ! -d "$DCIM_PATH/$SUB_DIR" ]; then
       mkdir -p "$DCIM_PATH/$SUB_DIR"
     fi
-    FILE_NAME="MOV_$(date +%H%M.mov)"
+    FILE_NAME="MOV_$(date +%H%M.h264)"
     RECORDING_PATH="$DCIM_PATH/$SUB_DIR/$FILE_NAME"
-    /system/sdcard/bin/busybox nohup /system/sdcard/bin/avconv -rtsp_transport tcp -y -i rtsp://0.0.0.0:8554/unicast -vcodec copy -c:a aac -strict experimental "$RECORDING_PATH"  &>/dev/null &
+    # wait for rtspserver to become available
+    until pids=$(pidof v4l2rtspserver-master)
+    do
+      sleep 1
+    done
+    /system/sdcard/bin/busybox nohup /system/sdcard/bin/avconv -flags low_delay -fflags nobuffer -probesize 32 -i rtsp://"$CREDENTIALS"0.0.0.0:8554/unicast -strict experimental -y -vcodec copy -an $RECORDING_PATH &>/dev/null &
     echo "$!" > "$PIDFILE"
   fi
 }
@@ -35,8 +48,9 @@ stop()
 {
   pid="$(cat "$PIDFILE" 2>/dev/null)"
   if [ "$pid" ]; then
-    kill "$pid" &&  rm "$PIDFILE"
-    echo "Stopped recording"
+    kill "$pid"
+    rm "$PIDFILE" 1> /dev/null 2>&1
+    echo "Stopped recording."
   else
     echo "Could not find a running recording to stop."
   fi
