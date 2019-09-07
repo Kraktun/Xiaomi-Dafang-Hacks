@@ -198,7 +198,9 @@ if [ "$send_telegram" = true ]; then
 	elif [ "$telegram_alert_type" = "video" ] && [ "$dateDiff" -gt "$telegramInterval" ] ; then
 		echo $dateNow > $lastSentUpdate
 		debug_msg "Send telegram video"
-		/system/sdcard/bin/telegram v "$video_tempfile"
+		/system/sdcard/bin/avconv -i "$video_tempfile"  "${video_tempfile}-lo.mp4"
+		/system/sdcard/bin/telegram v "${video_tempfile}-lo.mp4"
+		rm "${video_tempfile}-lo.mp4"
 	fi
 	) &
 fi
