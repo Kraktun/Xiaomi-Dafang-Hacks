@@ -96,8 +96,14 @@ main() {
   fi;
 
   messageAttr="message"
-  messageVal=$(echo "$json" | $JQ -r '.result[0].message // ""')
+  messageVal=$(echo "$json" | $JQ -r ".result[0].$messageAttr // \"\"")
   [ -z "$messageVal" ] && messageAttr="edited_message"
+
+  messageEdit=$(echo "$json" | $JQ -r ".result[0].$messageAttr // \"\"")
+  [ -z "$messageEdit" ] && messageAttr="channel_post"
+
+  messagePost=$(echo "$json" | $JQ -r ".result[0].$messageAttr // \"\"")
+  [ -z "$messagePost" ] && return 0 # update type not supported
 
   chatId=$(echo "$json" | $JQ -r ".result[0].$messageAttr.chat.id // \"\"")
   [ -z "$chatId" ] && return 0 # no new messages
@@ -108,7 +114,7 @@ main() {
   if [ "$chatId" != "$userChatId" ]; then
     username=$(echo "$json" | $JQ -r ".result[0].$messageAttr.from.username // \"\"")
     firstName=$(echo "$json" | $JQ -r ".result[0].$messageAttr.from.first_name // \"\"")
-    $TELEGRAM m "Received message from not authrized chat: $chatId\nUser: $username($firstName)\nMessage: $cmd"
+    $TELEGRAM m "Received message from not authorized chat: $chatId\nUser: $username($firstName)\nMessage: $cmd"
   else
     respond $cmd
   fi;
