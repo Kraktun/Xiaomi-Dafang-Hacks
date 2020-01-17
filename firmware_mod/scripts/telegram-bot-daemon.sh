@@ -47,13 +47,25 @@ videoAlerts() {
 }
 
 setInterval() {
-  . /system/sdcard/scripts/common_functions.sh
   if [ "$1" -ge 0 ] ; then
     rewrite_config /system/sdcard/config/telegram.conf telegramInterval $1
     $TELEGRAM m "Interval set to $1 seconds" 
   else 
     $TELEGRAM m "Invalid input: $1" 
   fi
+}
+
+setTargetChat() {
+  rewrite_config /system/sdcard/config/telegram.conf userChatId \"$1\"
+  $TELEGRAM mu $origUserChatId "Target chat set to $1" 
+  $TELEGRAM m "You are the new receiver of updates" 
+  . /system/sdcard/config/telegram.conf
+}
+
+restoreTargetChat() {
+  rewrite_config /system/sdcard/config/telegram.conf userChatId $origUserChatId
+  $TELEGRAM m "Target chat set to origin"
+  . /system/sdcard/config/telegram.conf
 }
 
 customScript() {
@@ -70,10 +82,12 @@ respond() {
     /off) detectionOff;;
     /textalerts) textAlerts;;
     /imagealerts) imageAlerts;;
-	/videoalerts) videoAlerts;;
+	  /videoalerts) videoAlerts;;
     /interval) setInterval $2;;
     /script) customScript $2;;
-    /help | /start) $TELEGRAM m "######### Bot commands #########\n# /mem - show memory information\n# /shot - take a shot\n# /on - motion detect on\n# /off - motion detect off\n# /textalerts - Text alerts on motion detection\n# /imagealerts - Image alerts on motion detection\n# /videoalerts - Video alerts on motion detection\n# /interval N - Set time frame to send alerts\n# /script - Execute custom script";;
+    /setchat) setTargetChat $2;;
+    /restorechat) restoreTargetChat;;
+    /help | /start) $TELEGRAM m "######### Bot commands #########\n# /mem - show memory information\n# /shot - take a shot\n# /on - motion detect on\n# /off - motion detect off\n# /textalerts - Text alerts on motion detection\n# /imagealerts - Image alerts on motion detection\n# /videoalerts - Video alerts on motion detection\n# /interval N - Set time frame to send alerts\n# /script - Execute custom script\n# /setchat N - Set new chat for messages\n# /restorechat - Restore original chat for messages";;
     *) $TELEGRAM m "I can't respond to '$cmd' command"
   esac
 }
@@ -115,10 +129,17 @@ main() {
   cmd=$(echo "$json" | $JQ -r ".result[0].$messageAttr.text // \"\"")
   updateId=$(echo "$json" | $JQ -r '.result[0].update_id // ""')
 
-  if [ "$chatId" != "$userChatId" ]; then
+  if [ "$chatId" != "$userChatId" ] && [ "$chatId" != "$origUserChatId" ]; then
     username=$(echo "$json" | $JQ -r ".result[0].$messageAttr.from.username // \"\"")
     firstName=$(echo "$json" | $JQ -r ".result[0].$messageAttr.from.first_name // \"\"")
     $TELEGRAM m "Received message from unauthorized chat id: $chatId\nUser: $username($firstName)\nMessage: $cmd"
+  elif [ "$userChatId" != "$origUserChatId" ] && [ "$chatId" == "$origUserChatId" ]; then
+    p=${cmd%%@*}
+    if [ "$p" == "/restorechat" ]; then
+      respond $cmd
+    else
+      $TELEGRAM mu $origUserChatId "Restore target chat with /restorechat before using this command.\nCurrent chat is $userChatId"
+    fi;
   else
     respond $cmd
   fi;
