@@ -4,6 +4,6 @@
 
 # Add your Telegram credentials here (these are just examples)
 apiToken="23132160:AAFrSEwzJ-X-64tLnD8JJ$JoAxWIMg$$w"
-userChatId=("30985132","1111111111")
+userChatId="30985132"
 lastSentUpdate="/tmp/last_telegram_update"
 telegramInterval=15
