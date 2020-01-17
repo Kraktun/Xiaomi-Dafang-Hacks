@@ -6,6 +6,25 @@
 killall mosquitto_sub 2> /dev/null
 killall mosquitto_sub.bin 2> /dev/null
 
+while true; do
+  /system/sdcard/bin/mosquitto_pub.bin -h "$HOST" -p "$PORT" -u "$USER" -P "$PASS" -t "${TOPIC}"/init ${MOSQUITTOOPTS} -n
+  case $? in
+	0)
+		break 2
+		;;
+	5)
+		# Not authorized
+		logger "MQTT: credentials are not valid"
+		break 2
+		;;
+	14)
+		# Connection error, retry
+		logger "MQTT: cannot connect to $HOST at $PORT, retry in 60s"
+		sleep 60
+		;;
+  esac
+done
+
 /system/sdcard/bin/mosquitto_sub.bin -v -h "$HOST" -p "$PORT" -u "$USER" -P "$PASS" -t "${TOPIC}"/# -t "${LOCATION}/set" ${MOSQUITTOOPTS} | while read -r line ; do
   case $line in
     "${LOCATION}/set announce")
@@ -17,6 +36,13 @@ killall mosquitto_sub.bin 2> /dev/null
 
     "${TOPIC}/set status")
       /system/sdcard/bin/mosquitto_pub.bin -h "$HOST" -p "$PORT" -u "$USER" -P "$PASS" -t "${TOPIC}"/ ${MOSQUITTOPUBOPTS} ${MOSQUITTOOPTS} -m "$(/system/sdcard/scripts/mqtt-status.sh)"
+    ;;
+
+    "${TOPIC}/play "*)
+      AUDIOFILE=$(echo "$line" | awk '{print $2}')
+      VOLUME=$(echo "$line" | awk '{print $3}')
+      VOLUME=${VOLUME:-50}
+      /system/sdcard/bin/audioplay "/system/sdcard/media/$AUDIOFILE" "$VOLUME" $
     ;;
 
     "${TOPIC}/leds/blue")
@@ -76,8 +102,12 @@ killall mosquitto_sub.bin 2> /dev/null
     ;;
 
     "${TOPIC}/brightness")
-      if [ "$SENDLDR" != "false" ]; then
+      if [ $LIGHT_SENSOR == 'hw' ]
+      then
         /system/sdcard/bin/mosquitto_pub.bin -h "$HOST" -p "$PORT" -u "$USER" -P "$PASS" -t "${TOPIC}"/brightness ${MOSQUITTOPUBOPTS} ${MOSQUITTOOPTS} -m "$(ldr status)"
+      elif [ $LIGHT_SENSOR == 'virtual' ]
+      then
+        /system/sdcard/bin/mosquitto_pub.bin -h "$HOST" -p "$PORT" -u "$USER" -P "$PASS" -t "${TOPIC}"/brightness ${MOSQUITTOPUBOPTS} ${MOSQUITTOOPTS} -m "$(exposure status)"
       fi
     ;;
 
@@ -294,6 +324,20 @@ killall mosquitto_sub.bin 2> /dev/null
     "${TOPIC}/reboot/set ON")
       /system/sdcard/bin/mosquitto_pub.bin -h "$HOST" -p "$PORT" -u "$USER" -P "$PASS" -t "${TOPIC}"/reboot ${MOSQUITTOPUBOPTS} ${MOSQUITTOOPTS} -m "Rebooting the System"
       reboot_system
+    ;;
+
+    "${TOPIC}/recording")
+      /system/sdcard/bin/mosquitto_pub.bin -h "$HOST" -p "$PORT" -u "$USER" -P "$PASS" -t "${TOPIC}"/recording ${MOSQUITTOPUBOPTS} ${MOSQUITTOOPTS} -m "$(recording status)"
+    ;;
+
+    "${TOPIC}/recording/set ON")
+      recording on
+      /system/sdcard/bin/mosquitto_pub.bin -h "$HOST" -p "$PORT" -u "$USER" -P "$PASS" -t "${TOPIC}"/recording ${MOSQUITTOPUBOPTS} ${MOSQUITTOOPTS} -m "$(recording status)"
+    ;;
+
+    "${TOPIC}/recording/set OFF")
+      recording off
+      /system/sdcard/bin/mosquitto_pub.bin -h "$HOST" -p "$PORT" -u "$USER" -P "$PASS" -t "${TOPIC}"/recording ${MOSQUITTOPUBOPTS} ${MOSQUITTOOPTS} -m "$(recording status)"
     ;;
 
     "${TOPIC}/snapshot/set ON")

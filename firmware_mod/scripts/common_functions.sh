@@ -223,12 +223,21 @@ update_motor_pos(){
   update_axis
 }
 
-# Read the light sensor
+# Read the hw light sensor (hw in mqtt.conf)
 ldr(){
   case "$1" in
   status)
     brightness=$(dd if=/dev/jz_adc_aux_0 count=20 2> /dev/null |  sed -e 's/[^\.]//g' | wc -m)
     echo "$brightness"
+  esac
+}
+
+# Read the virtual light sensor (virtual in mqtt.conf)
+exposure(){
+  case "$1" in
+  status)
+    isp_exposure=$(grep 'ISP exposure log2 id:' /proc/jz/isp/isp_info  | sed 's/^.*: //')
+    echo "$isp_exposure"
   esac
 }
 
