@@ -398,6 +398,28 @@ motion_detection(){
   esac
 }
 
+# Control the motion detection led function
+motion_led(){
+  case "$1" in
+  on)
+    rewrite_config /system/sdcard/config/motion.conf motion_trigger_led "true"
+    ;;
+  off)
+    rewrite_config /system/sdcard/config/motion.conf motion_trigger_led "false"
+    ;;
+  status)
+    status=$(grep '^[^#;]' /system/sdcard/config/motion.conf|grep 'motion_trigger_led'|cut -f2 -d \=)
+    case $status in
+      true)
+        echo "ON"
+        ;;
+      false)
+        echo "OFF"
+        ;;
+    esac
+  esac
+}
+
 # Control the motion detection mail function
 motion_send_mail(){
   case "$1" in
@@ -408,7 +430,7 @@ motion_send_mail(){
     rewrite_config /system/sdcard/config/motion.conf send_email "false"
     ;;
   status)
-    status=$(awk '/send_email/' /system/sdcard/config/motion.conf |cut -f2 -d \=)
+    status=$(grep '^[^#;]' /system/sdcard/config/motion.conf|grep 'send_email'|cut -f2 -d \=)
     case $status in
       false)
         echo "OFF"
@@ -430,12 +452,56 @@ motion_send_telegram(){
     rewrite_config /system/sdcard/config/motion.conf send_telegram "false"
     ;;
   status)
-    status=$(awk '/send_telegram/' /system/sdcard/config/motion.conf |cut -f2 -d \=)
+    status=$(grep '^[^#;]' /system/sdcard/config/motion.conf|grep 'send_telegram'|cut -f2 -d \=)
     case $status in
       true)
         echo "ON"
         ;;
       *)
+        echo "OFF"
+        ;;
+    esac
+  esac
+}
+
+# Control the motion detection snapshot function
+motion_snapshot(){
+  case "$1" in
+  on)
+    rewrite_config /system/sdcard/config/motion.conf save_snapshot "true"
+    ;;
+  off)
+    rewrite_config /system/sdcard/config/motion.conf save_snapshot "false"
+    ;;
+  status)
+    status=$(grep '^[^#;]' /system/sdcard/config/motion.conf|grep 'save_snapshot[^_]'|cut -f2 -d \=)
+    case $status in
+      false)
+        echo "OFF"
+        ;;
+      true)
+        echo "ON"
+        ;;
+    esac
+  esac
+}
+
+# Control the motion detection video function
+motion_video(){
+  case "$1" in
+  on)
+    rewrite_config /system/sdcard/config/motion.conf save_video "true"
+    ;;
+  off)
+    rewrite_config /system/sdcard/config/motion.conf save_video "false"
+    ;;
+  status)
+    status=$(grep '^[^#;]' /system/sdcard/config/motion.conf|grep 'save_video[^_]'|cut -f2 -d \=)
+    case $status in
+      true)
+        echo "ON"
+        ;;
+      false)
         echo "OFF"
         ;;
     esac
@@ -464,12 +530,83 @@ motion_tracking(){
   esac
 }
 
+# Control the motion detection publish MQTT-message function
+motion_mqtt_publish(){
+  case "$1" in
+  on)
+    rewrite_config /system/sdcard/config/motion.conf publish_mqtt_message "true"
+    ;;
+  off)
+    rewrite_config /system/sdcard/config/motion.conf publish_mqtt_message "false"
+    ;;
+  status)
+    status=$(grep '^[^#;]' /system/sdcard/config/motion.conf|grep 'publish_mqtt_message'|cut -f2 -d \=)
+    case $status in
+      true)
+        echo "ON"
+        ;;
+      false)
+        echo "OFF"
+        ;;
+    esac
+  esac
+}
+
+# Control the motion detection publish snapshots in MQTT-message function
+motion_mqtt_snapshot(){
+  case "$1" in
+  on)
+    rewrite_config /system/sdcard/config/motion.conf publish_mqtt_snapshot "true"
+    ;;
+  off)
+    rewrite_config /system/sdcard/config/motion.conf publish_mqtt_snapshot "false"
+    ;;
+  status)
+    status=$(grep '^[^#;]' /system/sdcard/config/motion.conf|grep 'publish_mqtt_snapshot'|cut -f2 -d \=)
+    case $status in
+      true)
+        echo "ON"
+        ;;
+      false)
+        echo "OFF"
+        ;;
+    esac
+  esac
+}
+
+# Control the motion detection publish video in MQTT-message function
+motion_mqtt_video(){
+  case "$1" in
+  on)
+    rewrite_config /system/sdcard/config/motion.conf publish_mqtt_video "true"
+    ;;
+  off)
+    rewrite_config /system/sdcard/config/motion.conf publish_mqtt_video "false"
+    ;;
+  status)
+    status=$(grep '^[^#;]' /system/sdcard/config/motion.conf|grep 'publish_mqtt_video'|cut -f2 -d \=)
+    case $status in
+      true)
+        echo "ON"
+        ;;
+      false)
+        echo "OFF"
+        ;;
+    esac
+  esac
+}
+
 # Control the night mode
 night_mode(){
   case "$1" in
   on)
     /system/sdcard/bin/setconf -k n -v 1
-    ir_led on
+    . /system/sdcard/config/autonight.conf
+    if [ -z "$ir_led_off" ] || [ $ir_led_off = false ]; then
+        ir_led on
+    else
+        ir_led off
+    fi
     ir_cut off
     ;;
   off)
@@ -519,12 +656,12 @@ snapshot(){
 update_axis(){
   . /system/sdcard/config/osd.conf > /dev/null 2>/dev/null
   AXIS=$(/system/sdcard/bin/motor -d s | sed '3d' | awk '{printf ("%s ",$0)}' | awk '{print " X="$2,"Y="$4}')
-  
+
   if [ "$ENABLE_OSD" = "true" ]; then
     if [ "$DISPLAY_AXIS" = "true" ]; then
       OSD="${OSD}${AXIS}"
     fi
-    
+
     /system/sdcard/bin/setconf -k o -v "$OSD"
   fi
 }

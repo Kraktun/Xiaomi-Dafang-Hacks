@@ -124,10 +124,15 @@ main() {
   [ -z "$messagePost" ] && return 0 # update type not supported
 
   chatId=$(echo "$json" | $JQ -r ".result[0].$messageAttr.chat.id // \"\"")
+  updateId=$(echo "$json" | $JQ -r '.result[0].update_id // ""')
+  if [ "$updateId" != "" ] && [ -z "$chatId" ]; then                                                                           
+  markAsRead $updateId                                                                                 
+  return 0                                                                                             
+  fi;
+  
   [ -z "$chatId" ] && return 0 # no new messages
 
   cmd=$(echo "$json" | $JQ -r ".result[0].$messageAttr.text // \"\"")
-  updateId=$(echo "$json" | $JQ -r '.result[0].update_id // ""')
 
   if [ "$chatId" != "$userChatId" ] && [ "$chatId" != "$origUserChatId" ]; then
     username=$(echo "$json" | $JQ -r ".result[0].$messageAttr.from.username // \"\"")
