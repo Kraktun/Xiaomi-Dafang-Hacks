@@ -44,6 +44,7 @@ crashlytics-build.properties
 fabric.properties
 
 .idea/*
+**/.vscode/*
 
 # avoid uploading your wpa keys and personal adjustments
 firmware_mod/config/wpa_supplicant.conf
