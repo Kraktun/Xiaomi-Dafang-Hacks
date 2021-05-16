@@ -36,16 +36,27 @@ send_snapshot() {
 	if [ "$send_telegram" = true ]; then
 		(
 		include /system/sdcard/config/telegram.conf
+		
+		dateOld=$(cat "$lastSentUpdate")
+		dateNow=`date '+%s'`
+		dateDiff=$((dateNow-dateOld))
 
-		if [ "$telegram_alert_type" = "text" ] ; then
+		if [ "$telegram_alert_type" = "text" ] && [ "$dateDiff" -gt "$telegramInterval" ] ; then
+			echo $dateNow > $lastSentUpdate
 			debug_msg "Send telegram text"
 			/system/sdcard/bin/telegram m "Motion detected"
-		elif [ "$telegram_alert_type" = "image" -o  "$telegram_alert_type" = "video+image" ] ; then
+		elif [ "$telegram_alert_type" = "image" ] && [ "$dateDiff" -gt "$telegramInterval" ] ; then
+			echo $dateNow > $lastSentUpdate
 			debug_msg "Send telegram image"
+			/system/sdcard/bin/telegram p "$snapshot_tempfile"
+		elif [ "$telegram_alert_type" = "video" ] && [ "$dateDiff" -gt "$telegramInterval" ] ; then
+			echo $dateNow > $lastSentUpdate
+			debug_msg "Send telegram video"
 			/system/sdcard/bin/telegram p "$snapshot_tempfile"
 		fi
 		) &
 	fi
+	
 
 	# Send a matrix message
 	if [ "$send_matrix" = true ]; then
@@ -337,39 +348,6 @@ if [ "$send_email" = true ] ; then
 	/system/sdcard/scripts/sendPictureMail.sh &
 fi
 
-# Send a telegram message
-if [ "$send_telegram" = true ]; then
-	(
-	include /system/sdcard/config/telegram.conf
-	
-	dateOld=$(cat "$lastSentUpdate")
-	dateNow=`date '+%s'`
-	dateDiff=$((dateNow-dateOld))
-	
-	if [ "$telegram_alert_type" = "text" ] && [ "$dateDiff" -gt "$telegramInterval" ] ; then
-		echo $dateNow > $lastSentUpdate
-		debug_msg "Send telegram text"
-		/system/sdcard/bin/telegram m "Motion detected"
-	elif [ "$telegram_alert_type" = "image" ] && [ "$dateDiff" -gt "$telegramInterval" ] ; then
-		echo $dateNow > $lastSentUpdate
-		debug_msg "Send telegram image"
-		/system/sdcard/bin/telegram p "$snapshot_tempfile"
-	elif [ "$telegram_alert_type" = "video" ] && [ "$dateDiff" -gt "$telegramInterval" ] ; then
-		echo $dateNow > $lastSentUpdate
-		debug_msg "Send telegram video"
-		if [ "$video_use_rtsp" = true ]; then
-			#Convert file to mp4 and remove audio stream so video plays in telegram app
-			/system/sdcard/bin/avconv -i "$video_tempfile" -c:v copy -an "$video_tempfile"-telegram.mp4
-			/system/sdcard/bin/telegram v "$video_tempfile"-telegram.mp4
-			rm "$video_tempfile"-telegram.mp4 
-			else
-			/system/sdcard/bin/avconv -i "$video_tempfile" "$video_tempfile-lo.mp4"
-			/system/sdcard/bin/telegram v "$video_tempfile-lo.mp4"
-			rm "$video_tempfile-lo.mp4"
-		fi
-	fi
-	) &
-fi
 
 # Run any user scripts.
 for i in /system/sdcard/config/userscripts/motiondetection/*; do
