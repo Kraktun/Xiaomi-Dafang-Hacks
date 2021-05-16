@@ -23,6 +23,14 @@ sendMem() {
   $TELEGRAM m $(free -k | awk '/^Mem/ {print "Mem: used "$3" free "$4} /^Swap/ {print "Swap: used "$3}')
 }
 
+nightOn() {
+  night_mode on && $TELEGRAM m "Night mode active"
+}
+
+nightOff() {
+  night_mode off && $TELEGRAM m "Night mode inactive"
+}
+
 detectionOn() {
   rewrite_config /system/sdcard/config/motion.conf send_telegram "true" && $TELEGRAM m "Motion detection started"
 }
@@ -80,14 +88,16 @@ respond() {
     /shot) sendShot;;
     /on) detectionOn;;
     /off) detectionOff;;
-    /textalerts) textAlerts;;
+    /nighton) nightOn;;
+	  /nightoff) nightOff;;
+	  /textalerts) textAlerts;;
     /imagealerts) imageAlerts;;
 	  /videoalerts) videoAlerts;;
     /interval) setInterval $2;;
     /script) customScript $2;;
     /setchat) setTargetChat $2;;
     /restorechat) restoreTargetChat;;
-    /help | /start) $TELEGRAM m "######### Bot commands #########\n# /mem - show memory information\n# /shot - take a shot\n# /on - motion detect on\n# /off - motion detect off\n# /textalerts - Text alerts on motion detection\n# /imagealerts - Image alerts on motion detection\n# /videoalerts - Video alerts on motion detection\n# /interval N - Set time frame to send alerts\n# /script - Execute custom script\n# /setchat N - Set new chat for messages\n# /restorechat - Restore original chat for messages";;
+    /help | /start) $TELEGRAM m "######### Bot commands #########\n# /mem - show memory information\n# /shot - take a shot\n# /on - motion detect on\n# /off - motion detect off\n# /nighton - night mode on\n# /nightoff - night mode off\n# /textalerts - Text alerts on motion detection\n# /imagealerts - Image alerts on motion detection\n# /videoalerts - Video alerts on motion detection\n# /interval N - Set time frame to send alerts\n# /script - Execute custom script\n# /setchat N - Set new chat for messages\n# /restorechat - Restore original chat for messages";;
     *) $TELEGRAM m "I can't respond to '$cmd' command"
   esac
 }
@@ -108,9 +118,9 @@ main() {
 
   [ -z "$json" ] && return 0
   if [ "$(echo "$json" | $JQ -r '.ok')" != "true" ]; then
-    echo "$(date '+%F %T') Bot error: $json" >> /tmp/telegram.log
-    [ "$(echo "$json" | $JQ -r '.error_code')" == "401" ] && return 1
-    return 0
+	echo "$(date '+%F %T') Bot error: $json" >> /tmp/telegram.log
+	[ "$(echo "$json" | $JQ -r '.error_code')" == "401" ] && return 1
+	return 0
   fi;
 
   messageAttr="message"
@@ -123,13 +133,16 @@ main() {
   messagePost=$(echo "$json" | $JQ -r ".result[0].$messageAttr // \"\"")
   [ -z "$messagePost" ] && return 0 # update type not supported
 
+  #messageVal=$(echo "$json" | $JQ -r '.result[0].message // ""')
+  #[ -z "$messageVal" ] && messageAttr="edited_message" && messageVal=$(echo "$json" | $JQ -r '.result[0].edited_message // ""')
+  #[ -z "$messageVal" ] && messageAttr="channel_post"
   chatId=$(echo "$json" | $JQ -r ".result[0].$messageAttr.chat.id // \"\"")
   updateId=$(echo "$json" | $JQ -r '.result[0].update_id // ""')
-  if [ "$updateId" != "" ] && [ -z "$chatId" ]; then                                                                           
-  markAsRead $updateId                                                                                 
-  return 0                                                                                             
+  if [ "$updateId" != "" ] && [ -z "$chatId" ]; then
+  markAsRead $updateId
+  return 0
   fi;
-  
+
   [ -z "$chatId" ] && return 0 # no new messages
 
   cmd=$(echo "$json" | $JQ -r ".result[0].$messageAttr.text // \"\"")
@@ -146,7 +159,7 @@ main() {
       $TELEGRAM mu $origUserChatId "Restore target chat with /restorechat before using this command.\nCurrent chat is $userChatId"
     fi;
   else
-    respond $cmd
+	respond $cmd
   fi;
 
   markAsRead $updateId
